@@ -81,7 +81,7 @@ func main() {
 	}
 
 	// the short excuse
-	if err := drawString(short, size, &shortTextBB, dst); err != nil {
+	if err := drawString(short, size - 2.0, &shortTextBB, dst); err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
