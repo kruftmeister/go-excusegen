@@ -9,7 +9,7 @@ $ ./go-excusegen -long "aws is down" -short "aws"
 ```
 which will then produce a PNG image in the root directory.
 
-![example-excuse.png](example-out.png)
+![example-excuse](example-out.png)
 
 
 # License
