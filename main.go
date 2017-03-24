@@ -12,6 +12,7 @@ import (
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
+	"golang.org/x/image/math/fixed"
 )
 
 const (
@@ -81,7 +82,7 @@ func main() {
 	}
 
 	// the short excuse
-	if err := drawString(short, size - 2.0, &shortTextBB, dst); err != nil {
+	if err := drawString(short, size-2.0, &shortTextBB, dst); err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
@@ -110,20 +111,47 @@ func main() {
 // if bb is not nil then it will be checked whether the string wouldn't fit the bounding box,
 // the size will be recalculated until it fits the bounding box
 func drawString(text string, size float64, bb *image.Rectangle, dst *image.RGBA) error {
+	s, startX := fitString(text, size, bb)
 	fg := image.Black
-
 	c := freetype.NewContext()
 	c.SetDPI(DPI)
 	c.SetFont(f)
-	c.SetFontSize(size)
+	c.SetFontSize(s)
 	c.SetClip(dst.Bounds())
 	c.SetSrc(fg)
 	c.SetDst(dst)
 	c.SetHinting(font.HintingNone)
 
 	pt := freetype.Pt(bb.Min.X, bb.Min.Y+(int(c.PointToFixed(size)>>6)))
-
+	pt.X = startX
 	_, err := c.DrawString(text, pt)
-
 	return err
+}
+
+func fitString(text string, size float64, bb *image.Rectangle) (float64, fixed.Int26_6) {
+	var adv fixed.Int26_6
+	for {
+
+		opts := &truetype.Options{
+			Size: size,
+			DPI:  DPI,
+		}
+		fFace := truetype.NewFace(f, opts)
+
+		adv = font.MeasureString(fFace, text)
+		bbMinXAsFixed := fixed.I(bb.Min.X)
+		bbMaxXAsFixed := fixed.I(bb.Max.X)
+
+		if bbMinXAsFixed+adv < bbMaxXAsFixed {
+			break
+		}
+		size -= 1.0
+		//println("reduced")
+	}
+
+	bbWidth := bb.Max.X - bb.Min.X
+	bbMiddle := bb.Min.X + bbWidth/2
+	textStart := fixed.I(bbMiddle) - adv/2
+
+	return size, textStart
 }
