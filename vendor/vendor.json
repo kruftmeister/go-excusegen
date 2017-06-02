@@ -21,6 +21,24 @@
 			"revisionTime": "2016-12-08T06:47:10Z"
 		},
 		{
+			"checksumSHA1": "zmCk+lgIeiOf0Ng9aFP9aFy8ksE=",
+			"path": "github.com/gorilla/mux",
+			"revision": "599cba5e7b6137d46ddf58fb1765f5d928e69604",
+			"revisionTime": "2017-02-28T22:43:54Z"
+		},
+		{
+			"checksumSHA1": "mGLJxniaH/9JNLjckeEh4RITUxs=",
+			"path": "github.com/mier85/goimgur",
+			"revision": "3300a5df93cafeb8fd06320d0b26b882ec26a7b5",
+			"revisionTime": "2017-06-02T09:40:46Z"
+		},
+		{
+			"checksumSHA1": "ynJSWoF6v+3zMnh9R0QmmG6iGV8=",
+			"path": "github.com/pkg/errors",
+			"revision": "ff09b135c25aae272398c51a07235b90a75aa4f0",
+			"revisionTime": "2017-03-16T20:15:38Z"
+		},
+		{
 			"checksumSHA1": "WZqFyWo6r8KZodsU0doRvel37F0=",
 			"path": "golang.org/x/image/draw",
 			"revision": "e6cbe778da3cea914ea6436d0f99309605c3dfc4",
