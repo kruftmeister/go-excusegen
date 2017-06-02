@@ -25,12 +25,34 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
+type (
+	Uploader interface {
+		Upload(string) (string, error)
+	}
+	Cacher interface {
+		Set(Key, string)
+		Get(Key) (string, bool)
+	}
+
+	Key struct {
+		Short string
+		Long  string
+	}
+	InMemoryCache struct {
+		images map[Key]string
+		mutex  *sync.RWMutex
+	}
+)
+
 const (
 	size = 28.0
 	DPI  = 72.0
 )
 
 var (
+	clientId = flag.String("clientID", "", "id for imgur client")
+	port     = flag.Int("port", 18888, "port for server")
+
 	f *truetype.Font
 
 	longTextBB = image.Rectangle{
@@ -43,9 +65,7 @@ var (
 	}
 )
 
-func create(uploader interface {
-	Upload(string) (string, error)
-}, short, long string) (string, error) {
+func create(uploader Uploader, short, long string) (string, error) {
 	// image template
 	imgf, err := os.Open("./resources/xkcd-excuse-template.png")
 	if err != nil {
@@ -221,14 +241,7 @@ func (iu *ImgurUploader) Upload(fname string) (string, error) {
 	return res.Data.Link, nil
 }
 
-var (
-	clientId = flag.String("clientID", "", "id for imgur client")
-	port     = flag.Int("port", 18888, "port for server")
-
-	uploader = NewImgurUploader()
-)
-
-func generateImgur(cache Cacher) func(rw http.ResponseWriter, req *http.Request) {
+func generateImgur(cache Cacher, uploader Uploader) func(rw http.ResponseWriter, req *http.Request) {
 	return func(rw http.ResponseWriter, req *http.Request) {
 		vars := mux.Vars(req)
 		short := vars["short"]
@@ -247,20 +260,6 @@ func generateImgur(cache Cacher) func(rw http.ResponseWriter, req *http.Request)
 		}
 		http.Redirect(rw, req, url, http.StatusTemporaryRedirect)
 	}
-}
-
-type Cacher interface {
-	Set(Key, string)
-	Get(Key) (string, bool)
-}
-
-type Key struct {
-	Short string
-	Long  string
-}
-type InMemoryCache struct {
-	images map[Key]string
-	mutex  *sync.RWMutex
 }
 
 func NewInMemoryCache() *InMemoryCache {
@@ -285,11 +284,12 @@ func (c *InMemoryCache) Get(key Key) (string, bool) {
 
 func main() {
 	flag.Parse()
-	n := NewInMemoryCache()
+	cache := NewInMemoryCache()
+	uploader := NewImgurUploader()
 
 	goimgur.ClientID = *clientId
 	r := mux.NewRouter()
-	r.HandleFunc("/{short:[a-zA-Z0-9 !]+}/{long:[a-zA-Z0-9 !]+}", generateImgur(n))
+	r.HandleFunc("/{short:[a-zA-Z0-9 !]+}/{long:[a-zA-Z0-9 !]+}", generateImgur(cache, uploader))
 	log.Printf("running on port: %d", *port)
 	http.ListenAndServe(":"+strconv.Itoa(*port), r)
 }
