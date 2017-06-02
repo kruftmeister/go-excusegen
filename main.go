@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"sync"
+
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 	"github.com/gorilla/mux"
@@ -226,22 +228,68 @@ var (
 	uploader = NewImgurUploader()
 )
 
-func generateImgur(rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	c, err := create(uploader, vars["short"], vars["long"])
-	if nil != err {
-		log.Printf("error happened: %s", err.Error())
-		rw.WriteHeader(500)
-		return
+func generateImgur(cache Cacher) func(rw http.ResponseWriter, req *http.Request) {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		vars := mux.Vars(req)
+		short := vars["short"]
+		long := vars["long"]
+		key := Key{Short: short, Long: long}
+		url, has := cache.Get(key)
+		if !has {
+			uUrl, err := create(uploader, short, long)
+			if nil != err {
+				log.Printf("error happened: %s", err.Error())
+				rw.WriteHeader(500)
+				return
+			}
+			cache.Set(key, uUrl)
+			url = uUrl
+		}
+		http.Redirect(rw, req, url, http.StatusTemporaryRedirect)
 	}
-	http.Redirect(rw, req, c, http.StatusTemporaryRedirect)
+}
+
+type Cacher interface {
+	Set(Key, string)
+	Get(Key) (string, bool)
+}
+
+type Key struct {
+	Short string
+	Long  string
+}
+type InMemoryCache struct {
+	images map[Key]string
+	mutex  *sync.RWMutex
+}
+
+func NewInMemoryCache() *InMemoryCache {
+	return &InMemoryCache{
+		images: make(map[Key]string),
+		mutex:  &sync.RWMutex{},
+	}
+}
+
+func (c *InMemoryCache) Set(key Key, url string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.images[key] = url
+}
+
+func (c *InMemoryCache) Get(key Key) (string, bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	s, ok := c.images[key]
+	return s, ok
 }
 
 func main() {
 	flag.Parse()
+	n := NewInMemoryCache()
+
 	goimgur.ClientID = *clientId
 	r := mux.NewRouter()
-	r.HandleFunc("/{short:[a-zA-Z0-9 !]+}/{long:[a-zA-Z0-9 !]+}", generateImgur)
+	r.HandleFunc("/{short:[a-zA-Z0-9 !]+}/{long:[a-zA-Z0-9 !]+}", generateImgur(n))
 	log.Printf("running on port: %d", *port)
 	http.ListenAndServe(":"+strconv.Itoa(*port), r)
 }
