@@ -1,4 +1,4 @@
-Engineer's excuse generator
+Programmer's excuse generator
 ===========================
 Simple image generator in Go, based on XKCD's famous [compiling comic](https://xkcd.com/303/).
 
